@@ -21,7 +21,7 @@ def fetch_media_data(media_type, tmdb_id, season=None, episode=None, provider=No
 
 def play_video(video_url):
     # Starting playback and redirecting stderr to /dev/null to hide additional output
-    subprocess.run(["mpv", video_url], stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    subprocess.run(["mpv", video_url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def select_fzf(prompt, options):
     try:
@@ -45,78 +45,81 @@ def select_quality(qualities):
     return selected_quality
 
 def main():
-    media_id = input("Enter the movie or TV show ID: ")
+    while True:
+        media_id = input("Enter the movie or TV show ID (or 'quit' to exit): ")
+        if media_id.lower() == 'quit':
+            sys.exit(0)
 
-    if media_id.isdigit():
-        tmdb_id = int(media_id)
+        if media_id.isdigit():
+            tmdb_id = int(media_id)
+            selected_provider = select_provider()
+            selected_media = select_fzf("Select media type:", "movie\ntv")
 
-        selected_provider = select_provider()
-        selected_media = select_fzf("Select media type:", "movie\ntv")
-
-        if selected_media in ["movie", "tv"]:
-            print(f"Fetching data for TMDB ID {tmdb_id}...")
-            if selected_media == "tv":
-                season = input("Enter season number: ")
-                episode = input("Enter episode number: ")
-                media_data = fetch_media_data(selected_media, tmdb_id, season, episode, selected_provider)
-            else:
-                media_data = fetch_media_data(selected_media, tmdb_id, provider=selected_provider)
-
-            if media_data:
-                print("Media data fetched.")
-
-                sources = media_data.get('sources', [])
-                if sources:
-                    qualities = []
-                    urls = {}
-                    for source in sources:
-                        quality = source.get('quality', 'auto')
-                        url = source.get('url')
-                        qualities.append(quality)
-                        urls[quality] = url
-
-                    selected_quality = select_quality("\n".join(qualities))
-                    selected_url = urls.get(selected_quality)
-
-                    if selected_url:
-                        print("Starting playback...")
-                        play_video(selected_url)
-
-                        # After video starts playing, provide additional options
-                        if selected_media == "movie":
-                            additional_options = "rewatch\nchange quality\nsearch another\nquit"
-                        else:
-                            additional_options = "previous episode\nnext episode\nrewatch\nchange quality\nsearch another show\nquit"
-
-                        selected_option = select_fzf("Select an option:", additional_options)
-                        # Perform actions based on selected option
-                        if selected_option == "rewatch":
-                            play_video(selected_url)
-                        elif selected_option == "change quality":
-                            selected_quality = select_quality("\n".join(qualities))
-                            selected_url = urls.get(selected_quality)
-                            if selected_url:
-                                play_video(selected_url)
-                            else:
-                                print("No valid source selected")
-                        elif selected_option == "search another":
-                            main()  # Restart the application for another media search
-                        elif selected_option == "quit":
-                            sys.exit(0)
-                        elif selected_option == "previous episode":
-                            # Implement logic for previous episode (if applicable)
-                            pass
-                        elif selected_option == "next episode":
-                            # Implement logic for next episode (if applicable)
-                            pass
+            if selected_media in ["movie", "tv"]:
+                print(f"Fetching data for TMDB ID {tmdb_id}...")
+                if selected_media == "tv":
+                    season = input("Enter season number: ")
+                    episode = input("Enter episode number: ")
+                    media_data = fetch_media_data(selected_media, tmdb_id, season, episode, selected_provider)
                 else:
-                    print("No sources found for the selected media")
+                    media_data = fetch_media_data(selected_media, tmdb_id, provider=selected_provider)
+
+                if media_data:
+                    print("Media data fetched.")
+
+                    sources = media_data.get('sources', [])
+                    if sources:
+                        qualities = []
+                        urls = {}
+                        for source in sources:
+                            quality = source.get('quality', 'auto')
+                            url = source.get('url')
+                            qualities.append(quality)
+                            urls[quality] = url
+
+                        selected_quality = select_quality("\n".join(qualities))
+                        selected_url = urls.get(selected_quality)
+
+                        if selected_url:
+                            print("Starting playback...")
+                            play_video(selected_url)
+
+                            # After video starts playing, provide additional options
+                            while True:
+                                if selected_media == "movie":
+                                    additional_options = "rewatch\nchange quality\nsearch another\nquit"
+                                else:
+                                    additional_options = "previous episode\nnext episode\nrewatch\nchange quality\nsearch another show\nquit"
+
+                                selected_option = select_fzf("Select an option:", additional_options)
+                                # Perform actions based on selected option
+                                if selected_option == "rewatch":
+                                    play_video(selected_url)
+                                elif selected_option == "change quality":
+                                    selected_quality = select_quality("\n".join(qualities))
+                                    selected_url = urls.get(selected_quality)
+                                    if selected_url:
+                                        play_video(selected_url)
+                                    else:
+                                        print("No valid source selected")
+                                elif selected_option == "search another":
+                                    break  # Break the loop and restart the main loop for another media search
+                                elif selected_option == "quit":
+                                    sys.exit(0)
+                                elif selected_option == "previous episode":
+                                    # Implement logic for previous episode (if applicable)
+                                    pass
+                                elif selected_option == "next episode":
+                                    # Implement logic for next episode (if applicable)
+                                    pass
+                    else:
+                        print("No sources found for the selected media")
+                else:
+                    print("Failed to fetch media data from FlixQuest API")
             else:
-                print("Failed to fetch media data from FlixQuest API")
+                print("Invalid media type")
         else:
-            print("Invalid media type")
-    else:
-        print("Invalid media ID")
+            print("Invalid media ID")
 
 if __name__ == "__main__":
     main()
