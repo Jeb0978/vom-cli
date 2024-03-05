@@ -21,7 +21,7 @@ def fetch_media_data(media_type, tmdb_id, season=None, episode=None, provider=No
 
 def play_video(video_url):
     # Starting playback and redirecting stderr to /dev/null to hide additional output
-    subprocess.run(["mpv", video_url], stderr=subprocess.DEVNULL)
+    subprocess.run(["mpv", video_url], stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
 def select_fzf(prompt, options):
     try:
@@ -81,8 +81,34 @@ def main():
                     if selected_url:
                         print("Starting playback...")
                         play_video(selected_url)
-                    else:
-                        print("No valid source selected")
+
+                        # After video starts playing, provide additional options
+                        if selected_media == "movie":
+                            additional_options = "rewatch\nchange quality\nsearch another\nquit"
+                        else:
+                            additional_options = "previous episode\nnext episode\nrewatch\nchange quality\nsearch another show\nquit"
+
+                        selected_option = select_fzf("Select an option:", additional_options)
+                        # Perform actions based on selected option
+                        if selected_option == "rewatch":
+                            play_video(selected_url)
+                        elif selected_option == "change quality":
+                            selected_quality = select_quality("\n".join(qualities))
+                            selected_url = urls.get(selected_quality)
+                            if selected_url:
+                                play_video(selected_url)
+                            else:
+                                print("No valid source selected")
+                        elif selected_option == "search another":
+                            main()  # Restart the application for another media search
+                        elif selected_option == "quit":
+                            sys.exit(0)
+                        elif selected_option == "previous episode":
+                            # Implement logic for previous episode (if applicable)
+                            pass
+                        elif selected_option == "next episode":
+                            # Implement logic for next episode (if applicable)
+                            pass
                 else:
                     print("No sources found for the selected media")
             else:
